@@ -41,15 +41,17 @@ private fun parse(owner: LifecycleOwner):MutableList<Disposable> {
 
 class SafeSubscribe(val d: MutableList<Disposable>) : LifecycleEventObserver {
     constructor(vararg ds:Disposable) : this(mutableListOf(*ds))
-    constructor(owner: LifecycleOwner) : this(mutableListOf()) {
+    constructor(owner: LifecycleOwner) : this(parse(owner)) {
         owner.lifecycle.addObserver(this)
     }
 
     override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
         when (event) {
             Lifecycle.Event.ON_RESUME -> {
-                d.clear()
-                d.addAll(parse(source))
+                d.removeIf { it.isDisposed() }
+                if (d.isEmpty()) {
+                    d.addAll(parse(source))
+                }
             }
             Lifecycle.Event.ON_PAUSE -> d.filter { !it.isDisposed }.forEach { it.dispose() }
             else -> {}

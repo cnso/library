@@ -41,7 +41,7 @@ private fun parse(owner: LifecycleOwner):MutableList<Disposable> {
 
 class SafeSubscribe(val d: MutableList<Disposable>) : LifecycleEventObserver {
     constructor(vararg ds:Disposable) : this(mutableListOf(*ds))
-    constructor(owner: LifecycleOwner) : this(parse(owner)) {
+    constructor(owner: LifecycleOwner) : this(mutableListOf()) {
         owner.lifecycle.addObserver(this)
     }
 

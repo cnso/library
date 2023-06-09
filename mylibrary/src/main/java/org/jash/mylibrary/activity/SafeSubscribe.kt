@@ -12,9 +12,8 @@ import org.jash.mylibrary.processor
 import kotlin.reflect.KClass
 import kotlin.reflect.full.findAnnotations
 import kotlin.reflect.full.functions
-
-class SafeSubscribe(vararg val d: Disposable) : LifecycleEventObserver {
-    constructor(owner: LifecycleOwner) : this(*owner.javaClass.kotlin.let { clazz ->
+private fun parse(owner: LifecycleOwner):MutableList<Disposable> {
+    return owner.javaClass.kotlin.let { clazz ->
         clazz.functions.filter {
             it.findAnnotations(Subscribe::class).isNotEmpty()
         }
@@ -36,14 +35,23 @@ class SafeSubscribe(vararg val d: Disposable) : LifecycleEventObserver {
                             }
                     }
                     .subscribe { data -> it.call(owner, data) }
-            }.toTypedArray()
-    }) {
+            }.toMutableList()
+    }
+}
+
+class SafeSubscribe(val d: MutableList<Disposable>) : LifecycleEventObserver {
+    constructor(vararg ds:Disposable) : this(mutableListOf(*ds))
+    constructor(owner: LifecycleOwner) : this(parse(owner)) {
         owner.lifecycle.addObserver(this)
     }
 
     override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
         when (event) {
-            Lifecycle.Event.ON_STOP -> d.filter { !it.isDisposed }.forEach { it.dispose() }
+            Lifecycle.Event.ON_RESUME -> {
+                d.clear()
+                d.addAll(parse(source))
+            }
+            Lifecycle.Event.ON_PAUSE -> d.filter { !it.isDisposed }.forEach { it.dispose() }
             else -> {}
         }
     }
